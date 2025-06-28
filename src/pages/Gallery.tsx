@@ -1,26 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Grid, List, Calendar, Tag, Upload, Cloud, Download, Share2, Heart, MoreVertical, ZoomIn, X, ChevronLeft, ChevronRight, Filter, SortAsc, SortDesc } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import useSupabaseBucketImages from '@/hooks/useSupabaseBucketImages';
-import { Navbar } from '@/components/Navbar';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Search,
+  Grid,
+  List,
+  Calendar,
+  Tag,
+  Upload,
+  Cloud,
+  Download,
+  Share2,
+  Heart,
+  MoreVertical,
+  ZoomIn,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  SortAsc,
+  SortDesc,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import useSupabaseBucketImages from "@/hooks/useSupabaseBucketImages";
+import { Navbar } from "@/components/Navbar";
+import { useToast } from "@/hooks/use-toast";
 
 const Gallery = () => {
   const { user } = useAuth();
   const userId = user && user.id ? user.id : null;
-  const { images: supabaseImages, loading: loadingSupabase } = useSupabaseBucketImages(userId);
+  const { images: supabaseImages, loading: loadingSupabase } =
+    useSupabaseBucketImages(userId);
   const [images, setImages] = useState([]);
   const [filteredImages, setFilteredImages] = useState([]);
-  const [viewMode, setViewMode] = useState('grid');
-  const [sortBy, setSortBy] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState("grid");
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedImages, setSelectedImages] = useState(new Set());
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [filterBy, setFilterBy] = useState('all');
+  const [filterBy, setFilterBy] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const [syncStatus, setSyncStatus] = useState("idle");
   const fileInputRef = useRef(null);
+  const { toast } = useToast();
 
   // Fetch images from Supabase on load
   useEffect(() => {
@@ -30,12 +52,12 @@ const Gallery = () => {
         id: `supabase-${idx}`,
         url,
         thumbnail: url,
-        name: url.split('/').pop() || `image-${idx}`,
-        size: 'Unknown',
+        name: url.split("/").pop() || `image-${idx}`,
+        size: "Unknown",
         date: new Date(),
-        tags: ['supabase'],
+        tags: ["supabase"],
         favorite: false,
-        type: 'image/jpeg',
+        type: "image/jpeg",
       }));
       setImages(mapped);
       setFilteredImages(mapped);
@@ -48,24 +70,28 @@ const Gallery = () => {
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(img =>
-        img.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        img.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      filtered = filtered.filter(
+        (img) =>
+          img.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          img.tags.some((tag) =>
+            tag.toLowerCase().includes(searchTerm.toLowerCase())
+          )
       );
     }
 
     // Apply category filter
-    if (filterBy !== 'all') {
+    if (filterBy !== "all") {
       switch (filterBy) {
-        case 'favorites':
-          filtered = filtered.filter(img => img.favorite);
+        case "favorites":
+          filtered = filtered.filter((img) => img.favorite);
           break;
-        case 'recent':
-          { const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-          filtered = filtered.filter(img => img.date > weekAgo);
-          break; }
-        case 'large':
-          filtered = filtered.filter(img => parseFloat(img.size) > 2);
+        case "recent": {
+          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          filtered = filtered.filter((img) => img.date > weekAgo);
+          break;
+        }
+        case "large":
+          filtered = filtered.filter((img) => parseFloat(img.size) > 2);
           break;
       }
     }
@@ -74,17 +100,17 @@ const Gallery = () => {
     filtered.sort((a, b) => {
       let comparison = 0;
       switch (sortBy) {
-        case 'date':
+        case "date":
           comparison = a.date.getTime() - b.date.getTime();
           break;
-        case 'name':
+        case "name":
           comparison = a.name.localeCompare(b.name);
           break;
-        case 'size':
+        case "size":
           comparison = parseFloat(a.size) - parseFloat(b.size);
           break;
       }
-      return sortOrder === 'asc' ? comparison : -comparison;
+      return sortOrder === "asc" ? comparison : -comparison;
     });
 
     setFilteredImages(filtered);
@@ -101,9 +127,11 @@ const Gallery = () => {
   };
 
   const toggleFavorite = (imageId) => {
-    setImages(prev => prev.map(img =>
-      img.id === imageId ? { ...img, favorite: !img.favorite } : img
-    ));
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === imageId ? { ...img, favorite: !img.favorite } : img
+      )
+    );
   };
 
   const openLightbox = (index) => {
@@ -116,16 +144,18 @@ const Gallery = () => {
   };
 
   const navigateLightbox = (direction) => {
-    const newIndex = direction === 'next'
-      ? (currentImageIndex + 1) % filteredImages.length
-      : (currentImageIndex - 1 + filteredImages.length) % filteredImages.length;
+    const newIndex =
+      direction === "next"
+        ? (currentImageIndex + 1) % filteredImages.length
+        : (currentImageIndex - 1 + filteredImages.length) %
+          filteredImages.length;
     setCurrentImageIndex(newIndex);
   };
 
   const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
     setIsLoading(true);
-    
+
     // Simulate file upload
     setTimeout(() => {
       const newImages = files.map((file, index) => ({
@@ -135,32 +165,108 @@ const Gallery = () => {
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         date: new Date(),
-        tags: ['uploaded'],
+        tags: ["uploaded"],
         favorite: false,
-        type: file.type
+        type: file.type,
       }));
-      
-      setImages(prev => [...newImages, ...prev]);
+
+      setImages((prev) => [...newImages, ...prev]);
       setIsLoading(false);
     }, 1500);
   };
 
   const syncWithGooglePhotos = async () => {
-    setSyncStatus('syncing');
-    
-    // Simulate Google Photos sync
-    setTimeout(() => {
-      setSyncStatus('success');
-      setTimeout(() => setSyncStatus('idle'), 2000);
-    }, 3000);
+    setSyncStatus("syncing");
+    try {
+      // Step 1: Redirect to Express backend to initiate OAuth
+      window.location.href = "http://localhost:5000/auth/google";
+    } catch (err) {
+      console.error("Sync failed:", err);
+      setSyncStatus("error");
+      setTimeout(() => setSyncStatus("idle"), 2000);
+      toast({
+        title: "Google Sync Failed",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
+    }
   };
 
+  // Step 2: After OAuth, token will be returned via URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("access_token");
+
+    if (token && images.length > 0) {
+      // Sync images to Google Photos
+      const syncImages = async () => {
+        try {
+          // Create album
+          const albumRes = await fetch("http://localhost:5000/create-album", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accessToken: token,
+              albumTitle: "Synced from Gallery App",
+            }),
+          });
+          if (!albumRes.ok) throw new Error("Failed to create album");
+          const albumData = await albumRes.json();
+          const albumId = albumData.id;
+
+          for (const image of images) {
+            try {
+              // Fetch the image as blob
+              const response = await fetch(image.url);
+              if (!response.ok) throw new Error("Failed to fetch image blob");
+              const blob = await response.blob();
+
+              const formData = new FormData();
+              formData.append("image", blob, image.name);
+              formData.append("accessToken", token);
+              formData.append("albumId", albumId);
+
+              const uploadRes = await fetch("http://localhost:5000/upload", {
+                method: "POST",
+                body: formData,
+              });
+              if (!uploadRes.ok) throw new Error("Failed to upload image");
+            } catch (imgErr) {
+              toast({
+                title: `Failed to upload ${image.name}`,
+                description: imgErr?.message || String(imgErr),
+                variant: "destructive",
+              });
+            }
+          }
+
+          setSyncStatus("success");
+          setTimeout(() => setSyncStatus("idle"), 2000);
+        } catch (err) {
+          console.error("Upload failed:", err);
+          setSyncStatus("error");
+          setTimeout(() => setSyncStatus("idle"), 2000);
+          toast({
+            title: "Google Sync Failed",
+            description: err?.message || String(err),
+            variant: "destructive",
+          });
+        }
+      };
+
+      syncImages();
+    }
+  }, [images]);
   const getSyncStatusColor = () => {
     switch (syncStatus) {
-      case 'syncing': return 'text-blue-500';
-      case 'success': return 'text-green-500';
-      case 'error': return 'text-red-500';
-      default: return 'text-gray-500';
+      case "syncing":
+        return "text-blue-500";
+      case "success":
+        return "text-green-500";
+      case "error":
+        return "text-red-500";
+      default:
+        return "text-gray-500";
     }
   };
 
@@ -176,15 +282,19 @@ const Gallery = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={syncWithGooglePhotos}
-                disabled={syncStatus === 'syncing'}
+                disabled={syncStatus === "syncing"}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  syncStatus === 'syncing'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-700 dark:to-purple-700 text-white hover:shadow-lg transform hover:scale-105'
+                  syncStatus === "syncing"
+                    ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-700 dark:to-purple-700 text-white hover:shadow-lg transform hover:scale-105"
                 }`}
               >
-                <Cloud className={`w-4 h-4 ${syncStatus === 'syncing' ? 'animate-pulse' : ''}`} />
-                {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Google Photos'}
+                <Cloud
+                  className={`w-4 h-4 ${
+                    syncStatus === "syncing" ? "animate-pulse" : ""
+                  }`}
+                />
+                {syncStatus === "syncing" ? "Syncing..." : "Sync Google Photos"}
               </button>
               <input
                 type="file"
@@ -242,23 +352,37 @@ const Gallery = () => {
               </select>
 
               <button
-                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                onClick={() =>
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
                 className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm"
               >
-                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                {sortOrder === "asc" ? (
+                  <SortAsc className="w-4 h-4" />
+                ) : (
+                  <SortDesc className="w-4 h-4" />
+                )}
               </button>
 
               {/* View Toggle */}
               <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
                 <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-blue-500 dark:bg-blue-700 text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 transition-colors ${
+                    viewMode === "grid"
+                      ? "bg-blue-500 dark:bg-blue-700 text-white"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-blue-500 dark:bg-blue-700 text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 transition-colors ${
+                    viewMode === "list"
+                      ? "bg-blue-500 dark:bg-blue-700 text-white"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 >
                   <List className="w-4 h-4" />
                 </button>
@@ -276,12 +400,14 @@ const Gallery = () => {
             {filteredImages.length} of {images.length} images
             {selectedImages.size > 0 && ` • ${selectedImages.size} selected`}
           </div>
-          <div className={`text-sm flex items-center gap-2 ${getSyncStatusColor()} dark:text-gray-300`}>
+          <div
+            className={`text-sm flex items-center gap-2 ${getSyncStatusColor()} dark:text-gray-300`}
+          >
             <Cloud className="w-4 h-4" />
             <span>
-              {syncStatus === 'syncing' && 'Syncing with Google Photos...'}
-              {syncStatus === 'success' && 'Successfully synced!'}
-              {syncStatus === 'idle' && 'Ready to sync'}
+              {syncStatus === "syncing" && "Syncing with Google Photos..."}
+              {syncStatus === "success" && "Successfully synced!"}
+              {syncStatus === "idle" && "Ready to sync"}
             </span>
           </div>
         </div>
@@ -290,12 +416,14 @@ const Gallery = () => {
         {isLoading && (
           <div className="text-center py-12">
             <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-300">Uploading images...</p>
+            <p className="text-gray-600 dark:text-gray-300">
+              Uploading images...
+            </p>
           </div>
         )}
 
         {/* Image Grid/List */}
-        {viewMode === 'grid' ? (
+        {viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredImages.map((image, index) => (
               <div
@@ -317,9 +445,15 @@ const Gallery = () => {
                         toggleFavorite(image.id);
                       }}
                       className="p-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full hover:bg-white dark:hover:bg-gray-700 transition-colors"
-                      aria-label={image.favorite ? 'Unfavorite' : 'Favorite'}
+                      aria-label={image.favorite ? "Unfavorite" : "Favorite"}
                     >
-                      <Heart className={`w-4 h-4 ${image.favorite ? 'fill-red-500 text-red-500' : 'text-gray-600 dark:text-gray-300'}`} />
+                      <Heart
+                        className={`w-4 h-4 ${
+                          image.favorite
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600 dark:text-gray-300"
+                        }`}
+                      />
                     </button>
                     <button
                       onClick={(e) => {
@@ -344,14 +478,23 @@ const Gallery = () => {
                   </div>
                 </div>
                 <div className="p-3">
-                  <h3 className="font-medium text-sm truncate text-gray-800 dark:text-gray-100">{image.name}</h3>
+                  <h3 className="font-medium text-sm truncate text-gray-800 dark:text-gray-100">
+                    {image.name}
+                  </h3>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{image.size}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{image.date.toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {image.size}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {image.date.toLocaleDateString()}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {image.tags.map(tag => (
-                      <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 text-xs rounded-full">
+                    {image.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 text-xs rounded-full"
+                      >
                         {tag}
                       </span>
                     ))}
@@ -381,11 +524,18 @@ const Gallery = () => {
                   onClick={() => openLightbox(index)}
                 />
                 <div className="flex-1">
-                  <h3 className="font-medium text-gray-800 dark:text-gray-100">{image.name}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{image.size} • {image.date.toLocaleDateString()}</p>
+                  <h3 className="font-medium text-gray-800 dark:text-gray-100">
+                    {image.name}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {image.size} • {image.date.toLocaleDateString()}
+                  </p>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {image.tags.map(tag => (
-                      <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 text-xs rounded-full">
+                    {image.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 text-xs rounded-full"
+                      >
                         {tag}
                       </span>
                     ))}
@@ -395,17 +545,32 @@ const Gallery = () => {
                   <button
                     onClick={() => toggleFavorite(image.id)}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    aria-label={image.favorite ? 'Unfavorite' : 'Favorite'}
+                    aria-label={image.favorite ? "Unfavorite" : "Favorite"}
                   >
-                    <Heart className={`w-4 h-4 ${image.favorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-300'}`} />
+                    <Heart
+                      className={`w-4 h-4 ${
+                        image.favorite
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-400 dark:text-gray-300"
+                      }`}
+                    />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label="Download">
+                  <button
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Download"
+                  >
                     <Download className="w-4 h-4 text-gray-400 dark:text-gray-300" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label="Share">
+                  <button
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Share"
+                  >
                     <Share2 className="w-4 h-4 text-gray-400 dark:text-gray-300" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label="More options">
+                  <button
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="More options"
+                  >
                     <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-300" />
                   </button>
                 </div>
@@ -419,8 +584,12 @@ const Gallery = () => {
             <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-gray-400 dark:text-gray-500" />
             </div>
-            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">No images found</h3>
-            <p className="text-gray-600 dark:text-gray-400">Try adjusting your search or filter criteria</p>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">
+              No images found
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Try adjusting your search or filter criteria
+            </p>
           </div>
         )}
       </div>
@@ -436,18 +605,18 @@ const Gallery = () => {
           >
             <X className="w-6 h-6" />
           </button>
-          
+
           <button
-            onClick={() => navigateLightbox('prev')}
+            onClick={() => navigateLightbox("prev")}
             className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white hover:bg-white/20 rounded-lg transition-colors z-10"
             aria-label="Previous image"
             title="Previous"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-          
+
           <button
-            onClick={() => navigateLightbox('next')}
+            onClick={() => navigateLightbox("next")}
             className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white hover:bg-white/20 rounded-lg transition-colors z-10"
             aria-label="Next image"
             title="Next"
