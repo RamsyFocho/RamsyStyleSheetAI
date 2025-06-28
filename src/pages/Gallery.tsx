@@ -1,345 +1,473 @@
-
-import React, { useState, useEffect } from 'react';
-import { Navbar } from '@/components/Navbar';
-import { useImages } from '@/hooks/useImages';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Grid, List, Calendar, Tag, Upload, Cloud, Download, Share2, Heart, MoreVertical, ZoomIn, X, ChevronLeft, ChevronRight, Filter, SortAsc, SortDesc } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGooglePhotos } from '@/hooks/useGooglePhotos';
-import { Button } from '@/components/ui/button';
-import { Download, Share2, Heart, Clock, CheckCircle, XCircle, Eye, Calendar, Cloud, Filter, Grid, List, Link, Unlink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
-
-interface ImageData {
-  id: string;
-  user_id: string;
-  original_url: string;
-  transformed_url: string | null;
-  style: string;
-  title: string | null;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import useSupabaseBucketImages from '@/hooks/useSupabaseBucketImages';
+import { Navbar } from '@/components/Navbar';
 
 const Gallery = () => {
-  const { images, loading } = useImages();
   const { user } = useAuth();
-  const { isConnected, isAuthenticating, isSyncing, authenticateWithGoogle, syncWithGooglePhotos, disconnectGooglePhotos } = useGooglePhotos();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filteredImages, setFilteredImages] = useState<ImageData[]>([]);
+  const userId = user && user.id ? user.id : null;
+  const { images: supabaseImages, loading: loadingSupabase } = useSupabaseBucketImages(userId);
+  const [images, setImages] = useState([]);
+  const [filteredImages, setFilteredImages] = useState([]);
+  const [viewMode, setViewMode] = useState('grid');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedImages, setSelectedImages] = useState(new Set());
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [filterBy, setFilterBy] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const fileInputRef = useRef(null);
 
-  // Get unique months from images
-  const getUniqueMonths = () => {
-    const months = images.map(image => {
-      const date = new Date(image.created_at);
-      return {
-        value: `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`,
-        label: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-      };
-    });
-    
-    const uniqueMonths = months.filter((month, index, self) => 
-      index === self.findIndex(m => m.value === month.value)
-    );
-    
-    return uniqueMonths.sort((a, b) => b.value.localeCompare(a.value));
-  };
-
-  // Filter images by selected month
+  // Fetch images from Supabase on load
   useEffect(() => {
-    if (selectedMonth === 'all') {
-      setFilteredImages(images);
-    } else {
-      const filtered = images.filter(image => {
-        const imageDate = new Date(image.created_at);
-        const imageMonth = `${imageDate.getFullYear()}-${(imageDate.getMonth() + 1).toString().padStart(2, '0')}`;
-        return imageMonth === selectedMonth;
-      });
-      setFilteredImages(filtered);
+    if (supabaseImages && supabaseImages.length > 0) {
+      // Map Supabase URLs to gallery image objects
+      const mapped = supabaseImages.map((url, idx) => ({
+        id: `supabase-${idx}`,
+        url,
+        thumbnail: url,
+        name: url.split('/').pop() || `image-${idx}`,
+        size: 'Unknown',
+        date: new Date(),
+        tags: ['supabase'],
+        favorite: false,
+        type: 'image/jpeg',
+      }));
+      setImages(mapped);
+      setFilteredImages(mapped);
     }
-  }, [images, selectedMonth]);
+  }, [supabaseImages]);
 
-  const handleGooglePhotosAction = async () => {
-    if (isConnected) {
-      await syncWithGooglePhotos();
-    } else {
-      await authenticateWithGoogle();
+  // Filter and sort images
+  useEffect(() => {
+    let filtered = [...images];
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(img =>
+        img.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        img.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
     }
+
+    // Apply category filter
+    if (filterBy !== 'all') {
+      switch (filterBy) {
+        case 'favorites':
+          filtered = filtered.filter(img => img.favorite);
+          break;
+        case 'recent':
+          { const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          filtered = filtered.filter(img => img.date > weekAgo);
+          break; }
+        case 'large':
+          filtered = filtered.filter(img => parseFloat(img.size) > 2);
+          break;
+      }
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          comparison = a.date.getTime() - b.date.getTime();
+          break;
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'size':
+          comparison = parseFloat(a.size) - parseFloat(b.size);
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    setFilteredImages(filtered);
+  }, [images, searchTerm, filterBy, sortBy, sortOrder]);
+
+  const handleImageSelect = (imageId) => {
+    const newSelected = new Set(selectedImages);
+    if (newSelected.has(imageId)) {
+      newSelected.delete(imageId);
+    } else {
+      newSelected.add(imageId);
+    }
+    setSelectedImages(newSelected);
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'processing':
-        return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'failed':
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
-    }
+  const toggleFavorite = (imageId) => {
+    setImages(prev => prev.map(img =>
+      img.id === imageId ? { ...img, favorite: !img.favorite } : img
+    ));
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Navbar />
-        <div className="container mx-auto px-4 py-20">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Your Gallery</h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-8">Please sign in to view your transformed images</p>
-            <Button 
-              size="lg"
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => navigate('/auth')}
-            >
-              Sign In to View Gallery
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const openLightbox = (index) => {
+    setCurrentImageIndex(index);
+    setIsLightboxOpen(true);
+  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Your Gallery</h1>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 animate-pulse">
-                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl mb-4"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const closeLightbox = () => {
+    setIsLightboxOpen(false);
+  };
 
-  const uniqueMonths = getUniqueMonths();
+  const navigateLightbox = (direction) => {
+    const newIndex = direction === 'next'
+      ? (currentImageIndex + 1) % filteredImages.length
+      : (currentImageIndex - 1 + filteredImages.length) % filteredImages.length;
+    setCurrentImageIndex(newIndex);
+  };
+
+  const handleFileUpload = (event) => {
+    const files = Array.from(event.target.files);
+    setIsLoading(true);
+    
+    // Simulate file upload
+    setTimeout(() => {
+      const newImages = files.map((file, index) => ({
+        id: `uploaded-${Date.now()}-${index}`,
+        url: URL.createObjectURL(file),
+        thumbnail: URL.createObjectURL(file),
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        date: new Date(),
+        tags: ['uploaded'],
+        favorite: false,
+        type: file.type
+      }));
+      
+      setImages(prev => [...newImages, ...prev]);
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  const syncWithGooglePhotos = async () => {
+    setSyncStatus('syncing');
+    
+    // Simulate Google Photos sync
+    setTimeout(() => {
+      setSyncStatus('success');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    }, 3000);
+  };
+
+  const getSyncStatusColor = () => {
+    switch (syncStatus) {
+      case 'syncing': return 'text-blue-500';
+      case 'success': return 'text-green-500';
+      case 'error': return 'text-red-500';
+      default: return 'text-gray-500';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-950">
       <Navbar />
-      
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 space-y-4 md:space-y-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Your Gallery</h1>
-            <p className="text-gray-600 dark:text-gray-300">All your AI-transformed masterpieces organized by month</p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Google Photos Connection */}
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={handleGooglePhotosAction}
-                disabled={isAuthenticating || isSyncing}
-                variant={isConnected ? "default" : "outline"}
-                className={isConnected ? "bg-green-600 hover:bg-green-700" : "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"}
+      <div className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-lg border-b border-slate-200 dark:border-gray-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-purple-400">
+              Dynamic Gallery
+            </h1>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={syncWithGooglePhotos}
+                disabled={syncStatus === 'syncing'}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  syncStatus === 'syncing'
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-700 dark:to-purple-700 text-white hover:shadow-lg transform hover:scale-105'
+                }`}
               >
-                <Cloud className={`w-4 h-4 mr-2 ${(isAuthenticating || isSyncing) ? 'animate-spin' : ''}`} />
-                {isAuthenticating ? 'Connecting...' : 
-                 isSyncing ? 'Syncing...' : 
-                 isConnected ? 'Sync Photos' : 'Connect Google Photos'}
-              </Button>
-              
-              {isConnected && (
-                <Button
-                  onClick={disconnectGooglePhotos}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <Unlink className="w-4 h-4" />
-                </Button>
-              )}
+                <Cloud className={`w-4 h-4 ${syncStatus === 'syncing' ? 'animate-pulse' : ''}`} />
+                {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Google Photos'}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                multiple
+                accept="image/*"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 dark:bg-green-700 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-800 transition-all transform hover:scale-105"
+              >
+                <Upload className="w-4 h-4" />
+                Upload
+              </button>
             </div>
-            
-            <div className="flex bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="h-8 px-3"
+          </div>
+
+          {/* Search and Controls */}
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search images by name or tags..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-900 dark:text-gray-100"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Filter Dropdown */}
+              <select
+                value={filterBy}
+                onChange={(e) => setFilterBy(e.target.value)}
+                className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-900 dark:text-gray-100"
               >
-                <Grid className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="h-8 px-3"
+                <option value="all">All Images</option>
+                <option value="favorites">Favorites</option>
+                <option value="recent">Recent</option>
+                <option value="large">Large Files</option>
+              </select>
+
+              {/* Sort Options */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-900 dark:text-gray-100"
               >
-                <List className="w-4 h-4" />
-              </Button>
+                <option value="date">Sort by Date</option>
+                <option value="name">Sort by Name</option>
+                <option value="size">Sort by Size</option>
+              </select>
+
+              <button
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm"
+              >
+                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+              </button>
+
+              {/* View Toggle */}
+              <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-blue-500 dark:bg-blue-700 text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-blue-500 dark:bg-blue-700 text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Google Photos Status */}
-        {isConnected && (
-          <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="flex items-center">
-              <Link className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
-              <span className="text-green-800 dark:text-green-200 font-medium">
-                Connected to Google Photos
-              </span>
-            </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Status Bar */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            {filteredImages.length} of {images.length} images
+            {selectedImages.size > 0 && ` • ${selectedImages.size} selected`}
+          </div>
+          <div className={`text-sm flex items-center gap-2 ${getSyncStatusColor()} dark:text-gray-300`}>
+            <Cloud className="w-4 h-4" />
+            <span>
+              {syncStatus === 'syncing' && 'Syncing with Google Photos...'}
+              {syncStatus === 'success' && 'Successfully synced!'}
+              {syncStatus === 'idle' && 'Ready to sync'}
+            </span>
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center py-12">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">Uploading images...</p>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-5 h-5 text-gray-400" />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+        {/* Image Grid/List */}
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {filteredImages.map((image, index) => (
+              <div
+                key={image.id}
+                className="group relative bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
-                <option value="all">All Months</option>
-                {uniqueMonths.map(month => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {filteredImages.length} {filteredImages.length === 1 ? 'image' : 'images'}
-            {selectedMonth !== 'all' && ` in ${uniqueMonths.find(m => m.value === selectedMonth)?.label}`}
-          </div>
-        </div>
-
-        {/* Gallery Content */}
-        {filteredImages.length === 0 ? (
-          <div className="max-w-2xl mx-auto text-center py-20">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 border border-gray-200 dark:border-gray-700">
-              <Eye className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                {selectedMonth === 'all' ? 'No transformations yet' : 'No images for this month'}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {selectedMonth === 'all' 
-                  ? 'Upload an image and select a style to get started!' 
-                  : 'Try selecting a different month or upload new images.'
-                }
-              </p>
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => navigate('/')}
-              >
-                Upload Your First Image
-              </Button>
-            </div>
+                <div className="aspect-square relative overflow-hidden">
+                  <img
+                    src={image.thumbnail}
+                    alt={image.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Overlay Controls */}
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(image.id);
+                      }}
+                      className="p-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                      aria-label={image.favorite ? 'Unfavorite' : 'Favorite'}
+                    >
+                      <Heart className={`w-4 h-4 ${image.favorite ? 'fill-red-500 text-red-500' : 'text-gray-600 dark:text-gray-300'}`} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openLightbox(index);
+                      }}
+                      className="p-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                      aria-label="View larger"
+                    >
+                      <ZoomIn className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    </button>
+                  </div>
+                  {/* Selection Checkbox */}
+                  <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <input
+                      type="checkbox"
+                      checked={selectedImages.has(image.id)}
+                      onChange={() => handleImageSelect(image.id)}
+                      className="w-4 h-4 rounded border-2 border-white dark:border-gray-700 accent-blue-500"
+                      aria-label="Select image"
+                    />
+                  </div>
+                </div>
+                <div className="p-3">
+                  <h3 className="font-medium text-sm truncate text-gray-800 dark:text-gray-100">{image.name}</h3>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{image.size}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{image.date.toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {image.tags.map(tag => (
+                      <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 text-xs rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-            : "space-y-4"
-          }>
-            {filteredImages.map((image) => (
-              <div key={image.id} className={viewMode === 'grid' ? "group" : "group"}>
-                {viewMode === 'grid' ? (
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
-                    <div className="relative">
-                      <img
-                        src={image.transformed_url || image.original_url}
-                        alt={`${image.style} transformation`}
-                        className="w-full h-48 object-cover"
-                      />
-                      <div className="absolute top-3 right-3 flex items-center space-x-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur rounded-full px-2 py-1">
-                        {getStatusIcon(image.status)}
-                        <span className="text-xs font-medium capitalize">{image.status}</span>
-                      </div>
-                      
-                      {image.status === 'completed' && (
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
-                          <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                            <Share2 className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                            <Heart className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{image.style}</h3>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        {new Date(image.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
+          <div className="space-y-2">
+            {filteredImages.map((image, index) => (
+              <div
+                key={image.id}
+                className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedImages.has(image.id)}
+                  onChange={() => handleImageSelect(image.id)}
+                  className="w-4 h-4 rounded accent-blue-500 border-gray-300 dark:border-gray-700"
+                  aria-label="Select image"
+                />
+                <img
+                  src={image.thumbnail}
+                  alt={image.name}
+                  className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => openLightbox(index)}
+                />
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-800 dark:text-gray-100">{image.name}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{image.size} • {image.date.toLocaleDateString()}</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {image.tags.map(tag => (
+                      <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 text-xs rounded-full">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow duration-200">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={image.transformed_url || image.original_url}
-                        alt={`${image.style} transformation`}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{image.style}</h3>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(image.status)}
-                            <span className="text-xs font-medium capitalize text-gray-600 dark:text-gray-400">{image.status}</span>
-                          </div>
-                        </div>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                          {new Date(image.created_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          })}
-                        </p>
-                      </div>
-                      {image.status === 'completed' && (
-                        <div className="flex items-center space-x-2">
-                          <Button size="sm" variant="outline">
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Share2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleFavorite(image.id)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label={image.favorite ? 'Unfavorite' : 'Favorite'}
+                  >
+                    <Heart className={`w-4 h-4 ${image.favorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-gray-300'}`} />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label="Download">
+                    <Download className="w-4 h-4 text-gray-400 dark:text-gray-300" />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label="Share">
+                    <Share2 className="w-4 h-4 text-gray-400 dark:text-gray-300" />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label="More options">
+                    <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-300" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
-        
-        {filteredImages.length > 12 && (
-          <div className="text-center mt-12">
-            <Button variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
-              Load More Images
-            </Button>
+
+        {filteredImages.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">No images found</h3>
+            <p className="text-gray-600 dark:text-gray-400">Try adjusting your search or filter criteria</p>
           </div>
         )}
       </div>
+
+      {/* Lightbox Modal */}
+      {isLightboxOpen && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center">
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 text-white hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Close lightbox"
+            title="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          <button
+            onClick={() => navigateLightbox('prev')}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Previous image"
+            title="Previous"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          
+          <button
+            onClick={() => navigateLightbox('next')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Next image"
+            title="Next"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+
+          <div className="max-w-4xl max-h-[90vh] flex items-center justify-center">
+            <img
+              src={filteredImages[currentImageIndex]?.url}
+              alt={filteredImages[currentImageIndex]?.name}
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-lg">
+            {currentImageIndex + 1} of {filteredImages.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -63,17 +63,17 @@ export const Navbar = () => {
                 <Palette className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                StyleShift AI
+                RamsyStyleSheet AI
               </h1>
             </div>
             
             {/* Navigation Links - Desktop */}
             <div className="hidden md:flex items-center space-x-8">
               <button 
-                onClick={() => navigateTo('/', 'upload-section')} 
+                onClick={() => navigateTo('/editor',)} 
                 className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
               >
-                {t('nav.upload')}
+                {t('nav.editor')}
               </button>
               <button 
                 onClick={() => navigateTo('/gallery')} 
@@ -189,7 +189,7 @@ export const Navbar = () => {
                   onClick={() => navigateTo('/', 'upload-section')}
                   className="w-full text-left px-4 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >
-                  {t('nav.upload')}
+                  {t('nav.editor')}
                 </button>
                 <button 
                   onClick={() => navigateTo('/gallery')}

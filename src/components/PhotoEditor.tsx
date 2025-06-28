@@ -112,16 +112,16 @@ export const PhotoEditor = () => {
       }
       // Get user profile with API key and credits
       const profile = await getUserProfile(supabase, user.id);
-      if (!profile.openai_api_key) {
-        toast({
-          title: "API Key Required",
-          description:
-            "Please set your OpenAI API key in your profile settings.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
-      }
+      // if (!profile.openai_api_key) {
+      //   toast({
+      //     title: "API Key Required",
+      //     description:
+      //       "Please set your OpenAI API key in your profile settings.",
+      //     variant: "destructive",
+      //   });
+      //   setIsProcessing(false);
+      //   return;
+      // }
       if (profile.credits <= 0) {
         toast({
           title: "Insufficient Credits",
@@ -136,15 +136,21 @@ export const PhotoEditor = () => {
       if (selectedImage.startsWith("data:image")) {
         imageUrl = await uploadImageToSupabase(selectedImage, user.id);
       }
+      // Get the current user's access token from Supabase client
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
       // Make request to Express Backend with public URL
       const response = await fetch("http://localhost:5000/api/transform", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({
           image: imageUrl,
           prompt: selectedStyle.description,
-          apiKey: profile.openai_api_key,
-        }),
+          // apiKey: profile.openai_api_key,
+        }), // <-- Fix: use comma, not semicolon
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -154,13 +160,12 @@ export const PhotoEditor = () => {
       const transformedImageUrl = result.transformedImage; // ✅ This matches what the backend returns
 
       console.log("Transformed image URL:", transformedImageUrl);
-      setTimeout(() => {
-        setTransformedImage(transformedImageUrl);
-        toast({
-          title: "Transformation Complete!",
-          description: `Your image has been transformed to ${selectedStyle?.name} style.`,
-        });
-      }, 3000);
+      // Remove setTimeout for immediate update
+      setTransformedImage(transformedImageUrl);
+      toast({
+        title: "Transformation Complete!",
+        description: `Your image has been transformed to ${selectedStyle?.name} style.`,
+      });
     } catch (error) {
       toast({
         title: "API Error",
