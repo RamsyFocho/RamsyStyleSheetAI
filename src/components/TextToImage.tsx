@@ -1,20 +1,35 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wand2, Download, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Wand2,
+  Download,
+  Sparkles,
+  Loader2,
+  Image as ImageIcon,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const TextToImage = () => {
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [style, setStyle] = useState('realistic');
+  const [style, setStyle] = useState("realistic");
   const [quality, setQuality] = useState([80]);
-  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [aspectRatio, setAspectRatio] = useState("1:1");
+  const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const handleGenerate = async () => {
@@ -22,48 +37,105 @@ export const TextToImage = () => {
       toast({
         title: "Missing Prompt",
         description: "Please enter a description for your image.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     setIsGenerating(true);
-    
-    // Simulate AI image generation
-    setTimeout(() => {
-      // For demo purposes, we'll use a placeholder image
-      const placeholderImages = [
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=512&h=512&fit=crop',
-        'https://images.unsplash.com/photo-1519681393784-d120c3e6a47f?w=512&h=512&fit=crop',
-        'https://images.unsplash.com/photo-1470813740244-df37b8c1edcb?w=512&h=512&fit=crop',
-        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=512&h=512&fit=crop'
-      ];
-      
-      const randomImage = placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
-      setGeneratedImage(randomImage);
-      setIsGenerating(false);
-      
-      toast({
-        title: "Image Generated!",
-        description: "Your AI-generated image is ready for download."
+    try {
+      // Use env variable for backend route
+      const backendRoute =
+        import.meta.env.VITE_EXPRESS_BACKEND_ROUTE ||
+        process.env.REACT_APP_EXPRESS_BACKEND_ROUTE ||
+        process.env.NEXT_PUBLIC_EXPRESS_BACKEND_ROUTE ||
+        "http://localhost:5000";
+      const apiUrl = backendRoute.replace(/\/$/, "") + "/api/generate-image";
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: prompt.trim() }),
       });
-    }, 4000);
+
+      if (!response.ok) {
+        throw new Error("Failed to generate image");
+      }
+
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      setGeneratedImage(imageUrl);
+    } catch (err) {
+      toast({
+        title: "Image Generation Failed",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
+      console.error("Generation error:", err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDownload = () => {
     if (generatedImage) {
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = generatedImage;
       link.download = `ai-generated-${Date.now()}.png`;
       link.click();
     }
   };
 
+  const handleSaveToSupabase = async () => {
+    if (!generatedImage || !user) {
+      toast({
+        title: "Save Failed",
+        description: "You must be logged in to save images.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      // Convert data URL to blob
+      const response = await fetch(generatedImage);
+      const blob = await response.blob();
+      const fileName = `transform-ai-image-${Date.now()}.png`;
+      const filePath = `${user.id}/${fileName}`;
+      // Upload to Supabase Storage bucket (e.g., 'user-images')
+      const { data, error } = await supabase.storage
+        .from("user-images")
+        .upload(filePath, blob, {
+          contentType: "image/png",
+          upsert: true,
+        });
+      if (error) throw error;
+      toast({
+        title: "Image Saved!",
+        description: "Your image has been saved to your gallery.",
+        variant: "success",
+      });
+    } catch (err) {
+      toast({
+        title: "Save Failed",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    setGeneratedImage(null);
+  };
+
   const examplePrompts = [
     "A majestic mountain landscape at sunset with golden clouds",
     "A futuristic city with flying cars and neon lights",
     "A peaceful garden with cherry blossoms and a small pond",
-    "An astronaut exploring an alien planet with purple skies"
+    "An astronaut exploring an alien planet with purple skies",
   ];
 
   return (
@@ -159,7 +231,7 @@ export const TextToImage = () => {
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={handleGenerate}
             disabled={!prompt.trim() || isGenerating}
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-6 text-lg shadow-lg"
@@ -198,24 +270,28 @@ export const TextToImage = () => {
                 Creating your masterpiece...
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md">
-                AI is analyzing your prompt and generating a unique image just for you
+                AI is analyzing your prompt and generating a unique image just
+                for you
               </p>
               <div className="w-80 bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 h-3 rounded-full animate-pulse" style={{width: '75%'}}></div>
+                <div
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 h-3 rounded-full animate-pulse"
+                  style={{ width: "75%" }}
+                ></div>
               </div>
             </div>
           ) : generatedImage ? (
             <div className="space-y-6">
-              <img 
-                src={generatedImage} 
-                alt="Generated" 
+              <img
+                src={generatedImage}
+                alt="Generated"
                 className="w-full rounded-xl shadow-lg"
               />
               <div className="space-y-3">
                 <p className="text-sm text-gray-600 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <strong>Prompt:</strong> {prompt}
                 </p>
-                <Button 
+                <Button
                   onClick={handleDownload}
                   className="w-full bg-green-600 hover:bg-green-700 text-white py-4 text-lg"
                 >
@@ -231,6 +307,24 @@ export const TextToImage = () => {
               <p className="text-center text-gray-500 dark:text-gray-400">
                 Describe what you'd like to see and watch the magic happen
               </p>
+            </div>
+          )}
+          {generatedImage && !isGenerating && (
+            <div className="flex gap-4 mt-4">
+              <Button
+                onClick={handleSaveToSupabase}
+                disabled={saving}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {saving ? "Saving..." : "Save to Gallery"}
+              </Button>
+              <Button
+                onClick={handleDiscard}
+                variant="outline"
+                className="border-gray-300"
+              >
+                Discard
+              </Button>
             </div>
           )}
         </CardContent>
