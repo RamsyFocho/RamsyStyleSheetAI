@@ -167,7 +167,7 @@ export const Navbar = () => {
                 <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">AI PhotoCraft</span>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setIsMobileMenuOpen(false)} className="dark:text-gray-300">
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 mr-3" />
               </Button>
             </div>
             

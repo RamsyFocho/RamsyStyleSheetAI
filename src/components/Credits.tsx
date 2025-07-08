@@ -92,10 +92,10 @@ export const Credits = () => {
   };
 
   return (
-    <section id="pricing" className="py-20 bg-white">
+    <section id="pricing" className="relative w-full py-20 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4 dark:text-white">Choose Your Plan</h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-8">
             Start with 5 free credits monthly. Our billing system handles OpenAI costs plus our service fee seamlessly.
           </p>
@@ -110,17 +110,17 @@ export const Credits = () => {
 
         {/* Free Tier Card */}
         <div className="max-w-md mx-auto mb-12">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 p-8 text-center">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 p-8 text-center">
             <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Zap className="w-8 h-8 text-green-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Free Tier</h3>
-            <div className="flex items-baseline justify-center mb-4">
-              <span className="text-4xl font-bold text-gray-900">$0</span>
-              <span className="text-gray-500 ml-1">/month</span>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Free Tier</h3>
+            <div className="flex items-baseline justify-center mb-4 ">
+              <span className="text-4xl font-bold text-gray-900 dark:text-white">$0</span>
+              <span className="text-gray-500 ml-1 dark:text-white">/month</span>
             </div>
-            <p className="text-green-600 font-semibold mb-4">5 credits included</p>
-            <ul className="space-y-2 text-sm text-gray-700 mb-6">
+            <p className="text-green-600 font-semibold mb-4 ">5 credits included</p>
+            <ul className="space-y-2 text-sm text-gray-700 mb-6 dark:text-white">
               <li className="flex items-center justify-center">
                 <Check className="w-4 h-4 text-green-500 mr-2" />
                 5 transformations/month
@@ -134,7 +134,7 @@ export const Credits = () => {
                 Standard quality
               </li>
             </ul>
-            <div className="text-xs text-gray-500 bg-white p-3 rounded-xl">
+            <div className="text-xs text-gray-500 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 p-3 rounded-xl dark:text-white">
               <strong>How it works:</strong> Your OpenAI API key handles the processing costs directly. 
               We provide the platform and interface for free!
             </div>
@@ -147,7 +147,7 @@ export const Credits = () => {
             return (
               <div 
                 key={plan.name}
-                className={`relative bg-white rounded-2xl border-2 p-8 transition-all duration-300 hover:shadow-lg ${
+                className={`relative bg-gradient-r dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 rounded-2xl border-2 p-8 transition-all duration-300 hover:shadow-lg ${
                   plan.popular 
                     ? 'border-blue-600 shadow-lg scale-105' 
                     : 'border-gray-200 hover:border-gray-300'
@@ -161,15 +161,15 @@ export const Credits = () => {
                   </div>
                 )}
                 
-                <div className="text-center mb-8">
+                <div className="text-center dark:text-white mb-8">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
                     plan.popular ? 'bg-blue-100' : 'bg-gray-100'
                   }`}>
                     <Icon className={`w-8 h-8 ${plan.popular ? 'text-blue-600' : 'text-gray-600'}`} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 dark:text-white">{plan.name}</h3>
                   <div className="flex items-baseline justify-center mb-2">
-                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
+                    <span className="text-4xl font-bold text-gray-900 dark:text-white">{plan.price}</span>
                     <span className="text-gray-500 ml-1">/{plan.period}</span>
                   </div>
                   <p className="text-blue-600 font-semibold">{plan.credits} credits included</p>
@@ -192,7 +192,7 @@ export const Credits = () => {
                 
                 <ul className="space-y-4 mb-8">
                   {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center text-gray-700">
+                    <li key={index} className="flex items-center text-gray-700 dark:text-white">
                       <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
                       {feature}
                     </li>
@@ -244,8 +244,8 @@ export const Credits = () => {
             </div>
           </div>
           
-          <p className="text-gray-600 mt-8 mb-4">Need a custom enterprise solution?</p>
-          <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
+          <p className="text-gray-600 mt-8 mb-4 dark:text-white">Need a custom enterprise solution?</p>
+          <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-white">
             Contact Sales
           </Button>
         </div>
