@@ -105,7 +105,7 @@ export const Hero = () => {
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white dark:via-gray-900/50 dark:to-gray-900"></div>
 
-      <div className="relative flex items-center flex-col  w-full mx-auto px-4 py-20 lg:py-32 ">
+      <div className="relative flex items-center flex-col  w-full  px-4 py-20 lg:py-32 ">
         <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium mb-8 shadow-lg">
           <Sparkles className="w-5 h-5 mr-2" />
           Revolutionary AI Image Transformation
@@ -115,7 +115,7 @@ export const Hero = () => {
             fill="white"
           />
         <div className="relative w-full ">
-          <div className="text-center mb-16 flex border-2 border-blue-500 h-[73vh]">           
+          <div className="text-center mb-16 flex h-[73vh]">           
             {/* left content */}
             <div className="flex flex-col items-center justify-center">
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-gray-900 dark:text-white mb-8 leading-tight">
@@ -156,7 +156,7 @@ export const Hero = () => {
               </div>
             </div>
              {/* right content */}
-            <div className="flex-1 relative border-2 border-red-500">
+            <div className="flex-1 relative">
               <SplineScene
                 scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
                 className="w-full h-full"
