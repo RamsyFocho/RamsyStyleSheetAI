@@ -8,6 +8,7 @@ import {
   Palette,
   Camera,
   Wand2,
+  Lightbulb,
 } from "lucide-react";
 import {
   Carousel,
@@ -33,7 +34,7 @@ export const Hero = () => {
     try {
       const prompt = "Suggest a unique and creative art style for a digital masterpiece. For example: 'Bioluminescent Surrealism' or 'Steampunk Mechanica'. Be concise and inspiring.";
       
-      let chatHistory = [];
+      const chatHistory = [];
       chatHistory.push({ role: "user", parts: [{ text: prompt }] });
       const payload = { contents: chatHistory };
       const apiKey = "" // API key will be automatically provided by the environment
@@ -156,10 +157,10 @@ export const Hero = () => {
               </div>
             </div>
              {/* right content */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative items-center">
               <SplineScene
                 scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-                className="w-full h-full"
+                className="w-full h-full mt-0"
               />
             </div>
           </div>
