@@ -140,7 +140,7 @@ export const PhotoEditor = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       // Make request to Express Backend with public URL
-      const response = await fetch("http://localhost:5000/api/transform", {
+      const response = await fetch(`${BACKEND_BASE_URL}/api/transform`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -305,3 +305,12 @@ export const PhotoEditor = () => {
     </div>
   );
 };
+
+// Utility to get backend base URL from env
+const BACKEND_BASE_URL =
+  import.meta.env.VITE_EXPRESS_BACKEND_ROUTE ||
+  process.env.REACT_APP_EXPRESS_BACKEND_ROUTE ||
+  process.env.NEXT_PUBLIC_EXPRESS_BACKEND_ROUTE;
+if (!BACKEND_BASE_URL) {
+  throw new Error("Backend base URL is not set in environment variables.");
+}

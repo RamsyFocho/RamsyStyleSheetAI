@@ -48,8 +48,10 @@ export const TextToImage = () => {
       const backendRoute =
         import.meta.env.VITE_EXPRESS_BACKEND_ROUTE ||
         process.env.REACT_APP_EXPRESS_BACKEND_ROUTE ||
-        process.env.NEXT_PUBLIC_EXPRESS_BACKEND_ROUTE ||
-        "http://localhost:5000";
+        process.env.NEXT_PUBLIC_EXPRESS_BACKEND_ROUTE;
+      if (!backendRoute) {
+        throw new Error("Backend base URL is not set in environment variables.");
+      }
       const apiUrl = backendRoute.replace(/\/$/, "") + "/api/generate-image";
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -205,9 +207,7 @@ export const TextToImage = () => {
             <Slider
               value={quality}
               onValueChange={setQuality}
-              max={100}
-              min={10}
-              step={10}
+              max
               className="w-full"
             />
           </div>

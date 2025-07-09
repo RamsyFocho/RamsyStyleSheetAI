@@ -24,6 +24,13 @@ import useSupabaseBucketImages from "@/hooks/useSupabaseBucketImages";
 import { Navbar } from "@/components/Navbar";
 import { useToast } from "@/hooks/use-toast";
 
+// Utility to get backend base URL from env
+const BACKEND_BASE_URL =
+  import.meta.env.VITE_EXPRESS_BACKEND_ROUTE ||
+  process.env.REACT_APP_EXPRESS_BACKEND_ROUTE ||
+  process.env.NEXT_PUBLIC_EXPRESS_BACKEND_ROUTE ||
+  "http://localhost:5000";
+
 const Gallery = () => {
   const { user } = useAuth();
   const userId = user && user.id ? user.id : null;
@@ -179,7 +186,7 @@ const Gallery = () => {
     setSyncStatus("syncing");
     try {
       // Step 1: Redirect to Express backend to initiate OAuth
-      window.location.href = "http://localhost:5000/auth/google";
+      window.location.href = `${BACKEND_BASE_URL}/auth/google`;
     } catch (err) {
       console.error("Sync failed:", err);
       setSyncStatus("error");
@@ -202,7 +209,7 @@ const Gallery = () => {
       const syncImages = async () => {
         try {
           // Create album
-          const albumRes = await fetch("http://localhost:5000/create-album", {
+          const albumRes = await fetch(`${BACKEND_BASE_URL}/create-album`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -226,7 +233,7 @@ const Gallery = () => {
               formData.append("accessToken", token);
               formData.append("albumId", albumId);
 
-              const uploadRes = await fetch("http://localhost:5000/upload", {
+              const uploadRes = await fetch(`${BACKEND_BASE_URL}/upload`, {
                 method: "POST",
                 body: formData,
               });
