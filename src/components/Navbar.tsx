@@ -60,10 +60,10 @@ export const Navbar = () => {
             {/* Logo */}
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigateTo('/')}>
               <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Palette className="w-6 h-6 text-white" />
+                <img src="/neuro-style/opengraph-image-p98pqg.png" alt="neuro style image" className="rounded-xl w-10 h-10"/>
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                RamsyStyleSheet AI
+                Neuro Style
               </h1>
             </div>
             

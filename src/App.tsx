@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,33 +13,53 @@ import Editor from "./pages/Editor";
 import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SplineLoader from "@/components/SplineLoader"; // Add this import
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <ThemeProvider>
-        <div className="min-h-screen bg-background text-foreground">
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <AuthProvider>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/editor" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-                  <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </AuthProvider>
-          </TooltipProvider>
-        </div>
-      </ThemeProvider>
-    </LanguageProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [appLoaded, setAppLoaded] = useState(false);
+
+  useEffect(() => {
+    // Simulate app loading (replace with your actual loading logic)
+    const timer = setTimeout(() => {
+      setAppLoaded(true);
+    }, 3000); // Adjust time as needed
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background text-foreground">
+            {/* Show Spline loader while app is loading */}
+            <SplineLoader isLoading={!appLoaded} />
+            
+            {/* Render app content only when loaded */}
+            {appLoaded && (
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <AuthProvider>
+                  <BrowserRouter>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/editor" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+                      <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </AuthProvider>
+              </TooltipProvider>
+            )}
+          </div>
+        </ThemeProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
+  optimizeDeps: {
+    include: ['@splinetool/runtime'],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
