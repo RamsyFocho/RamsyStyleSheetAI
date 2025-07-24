@@ -13,31 +13,27 @@ import Editor from "./pages/Editor";
 import Gallery from "./pages/Gallery";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import SplineLoader from "@/components/SplineLoader"; // Add this import
+import SplineLoader from "@/components/SplineLoader";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [appLoaded, setAppLoaded] = useState(false);
 
-  useEffect(() => {
-    // Simulate app loading (replace with your actual loading logic)
-    const timer = setTimeout(() => {
-      setAppLoaded(true);
-    }, 3000); // Adjust time as needed
-
-    return () => clearTimeout(timer);
-  }, []);
+  // Handle loading completion from SplineLoader
+  const handleLoadingComplete = () => {
+    setAppLoaded(true);
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <ThemeProvider>
           <div className="min-h-screen bg-background text-foreground">
-            {/* Show Spline loader while app is loading */}
-            <SplineLoader isLoading={!appLoaded} />
+            {/* Show Spline loader until it completes its full animation cycle */}
+            {!appLoaded && <SplineLoader onLoadingComplete={handleLoadingComplete} />}
             
-            {/* Render app content only when loaded */}
+            {/* Render app content only when loader is complete */}
             {appLoaded && (
               <TooltipProvider>
                 <Toaster />
