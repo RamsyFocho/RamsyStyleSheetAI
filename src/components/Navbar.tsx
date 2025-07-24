@@ -244,6 +244,12 @@ export const Navbar = () => {
 
               <nav className="space-y-2">
                 <button
+                  onClick={() => navigateTo("/")}
+                  className="w-full text-left px-4 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  {t("nav.home")}
+                </button>
+                <button
                   onClick={() => navigateTo("/", "upload-section")}
                   className="w-full text-left px-4 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >

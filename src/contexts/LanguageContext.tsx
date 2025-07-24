@@ -12,6 +12,7 @@ interface LanguageContextType {
 const translations = {
   en: {
     // Navigation
+    'nav.home': 'Home',
     'nav.editor': 'Editor',
     'nav.gallery': 'Gallery',
     'nav.pricing': 'Pricing',
@@ -54,6 +55,7 @@ const translations = {
   },
   fr: {
     // Navigation
+    'nav.home': 'Acceuil',
     'nav.editor': 'Editeur',
     'nav.gallery': 'Galerie',
     'nav.pricing': 'Tarifs',
